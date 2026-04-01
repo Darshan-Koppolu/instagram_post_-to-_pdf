@@ -1,0 +1,57 @@
+import instaloader
+import os
+from PIL import Image
+
+def download_instagram_post(url, download_path, output_image_name):
+    # Create folder if not exists
+    os.makedirs(download_path, exist_ok=True)
+
+    L = instaloader.Instaloader(save_metadata=False)
+
+    # Extract shortcode from URL
+    shortcode = url.split("/")[-2]
+
+    post = instaloader.Post.from_shortcode(L.context, shortcode)
+
+    print("Downloading images...")
+
+    paths = []
+
+    # Handle both single & multiple images
+    if post.typename == "GraphSidecar":
+        for i, node in enumerate(post.get_sidecar_nodes(), start=1):
+            filename = os.path.join(download_path, f"{output_image_name}_image_{i}.jpg")
+            L.download_pic(filename[:-4], node.display_url, post.date)
+            paths.append(filename)
+    else:
+        filename = os.path.join(download_path, "image_1.jpg")
+        L.download_pic(filename[:-4], post.url, post.date)
+        paths.append(filename)
+
+    return paths
+
+
+def images_to_pdf(image_paths, output_pdf):
+    images = []
+
+    for img_path in image_paths:
+        img = Image.open(img_path).convert("RGB")
+        images.append(img)
+
+    if images:
+        images[0].save(output_pdf, save_all=True, append_images=images[1:])
+        print(f"PDF saved as {output_pdf}")
+    else:
+        print("No images found.")
+
+
+if __name__ == "__main__":
+    url = input("Enter Instagram post URL: ")
+    output_file_name = input("Enter output file name: ")
+
+    image_paths = download_instagram_post(url, "downloads", output_file_name)
+
+   
+    output_pdf = output_file_name + ".pdf"
+
+    images_to_pdf(image_paths, output_pdf)
